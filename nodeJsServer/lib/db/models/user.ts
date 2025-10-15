@@ -12,6 +12,7 @@ export interface IUser extends mongoose.Document {
     role: "guest" | "user" | "admin"; // The role of the user, which can be one of "guest", "user", or "admin"
     salt: string; // The salt used for password hashing
     hash: string; // The hashed password
+    provider?: string; // Optional field to indicate the authentication provider (e.g., "keycloak")
 }
 
 /**

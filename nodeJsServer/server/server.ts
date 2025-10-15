@@ -101,7 +101,8 @@ app.prepare()
             user.username === "guest" ? cb(null, { userId: "-1", role: "guest" }) :
                 cb(null, {
                     userId: user._id.valueOf(),
-                    role: user.role
+                    role: user.role,
+                    provider: user.provider
                 });
         });
 
@@ -110,11 +111,25 @@ app.prepare()
          * - If the user is a "guest", the deserialized session is initialized as a guest.
          * - Otherwise, fetches the user from the database using the user ID.
          */
-        passport.deserializeUser((session: { userId: string, username: string }, cb) => {
-            session.userId === "-1" ? cb(null, { userId: session.userId, username: "Guest", role: "guest" }) :
-                User.findById(session.userId)
-                    .then((user) => cb(null, user))
-                    .catch(cb);
+        passport.deserializeUser((session: { userId: string, username?: string , provider?: string}, cb) => {
+
+            // Keep guest logic unchanged
+            if (session.userId === "-1") {
+                return cb(null, { userId: session.userId, username: "Guest", role: "guest" });
+            }
+
+            // If the user was authenticated by Keycloak, the session may contain a provider-specific id
+            // that is not a MongoDB ObjectId (for example a UUID). In that case, avoid calling
+            // User.findById which will try to cast to ObjectId and fail. Instead, return the session
+            // payload directly as the deserialized user object.
+            if (session.provider && session.provider.toLowerCase() === "keycloak") {
+                return cb(null, { userId: session.userId, username: session.username, provider: session.provider, role: "user" });
+            }
+
+            // Default behavior: lookup user in MongoDB by ObjectId
+            User.findById(session.userId)
+                .then((user) => cb(null, user))
+                .catch(cb);
         });
 
         // Initialize Passport middleware and session support

@@ -13,6 +13,7 @@ async function getSession() {
         .get("sessionId")
         ?.value.split(":")[1]
         .split(".")[0];
+    console.log("Session ID from cookie:", sessionId);
     const session: ISession | null = await Session.findById(sessionId);
     return session ? session.session.passport.user : null;
 }
