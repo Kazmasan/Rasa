@@ -46,6 +46,7 @@ const LogInPage = () => {
                 Or
             </p>
             <Link href="/auth/as-guest" className="font-semibold" prefetch={false}>Continue as guest</Link>
+            <Link href="/auth/keycloak" className="font-semibold" prefetch={false}>Authenticate with Keycloak</Link>
         </Form>
     );
 };

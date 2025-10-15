@@ -7,6 +7,7 @@ const auth = express.Router();
 
 // Import the registration route
 import register from "./auth/register";
+import keycloakAuth from "./auth/keycloak";
 
 /**
  * Handle the login process with passport local strategy
@@ -42,6 +43,35 @@ auth.post("/", function (req, res, next) {
 });
 
 /**
+ * Route pour vérifier la session courante
+ */
+auth.get("/session", (req, res) => {
+    if (req.user) {
+        res.json({
+            authenticated: true,
+            user: req.user
+        });
+    } else {
+        res.json({
+            authenticated: false,
+            user: null
+        });
+    }
+});
+
+/**
+ * Route de test pour vérifier que les routes auth fonctionnent
+ */
+auth.get("/test", (req, res) => {
+    console.log("🧪 Route de test /auth/test appelée");
+    res.json({ 
+        message: "Routes auth fonctionnent correctement!",
+        timestamp: new Date().toISOString(),
+        user: req.user || null
+    });
+});
+
+/**
  * Handle logging in as a guest user. This does not require user credentials.
  */
 auth.get("/as-guest", (req, res, next) => {
@@ -58,8 +88,24 @@ auth.get("/as-guest", (req, res, next) => {
     else res.redirect("/dashboard");
 });
 
+/**
+ * Handle user logout
+ */
+auth.post("/logout", (req, res, next) => {
+    req.logout((err) => {
+        if (err) {
+            next(err);
+        } else {
+            res.json({ success: true, message: "Déconnecté avec succès" });
+        }
+    });
+});
+
 // Use the "register" route for handling user registration
 auth.use("/register", register);
+
+// Use the "keycloak" route for handling Keycloak authentication
+auth.use("/keycloak", keycloakAuth);
 
 /**
  * Export a function to add the authentication routes to the server

@@ -94,27 +94,48 @@ app.prepare()
         /**
          * Serialize user information to save in the session.
          * - If the user is a "guest", saves a special session value.
+         * - If the user is from Keycloak, saves Keycloak-specific data.
          * - Otherwise, saves the user's ID and role.
          */
         //@ts-ignore
-        passport.serializeUser((user: IUser, cb) => {
-            user.username === "guest" ? cb(null, { userId: "-1", role: "guest" }) :
+        passport.serializeUser((user: any, cb) => {
+            if (user.username === "guest") {
+                cb(null, { userId: "-1", role: "guest" });
+            } else if (user.provider === "keycloak") {
+                cb(null, {
+                    userId: user.userId,
+                    username: user.username,
+                    email: user.email,
+                    name: user.name,
+                    provider: "keycloak",
+                    accessToken: user.accessToken,
+                    refreshToken: user.refreshToken,
+                    role: "user" // Rôle par défaut pour les utilisateurs Keycloak
+                });
+            } else {
                 cb(null, {
                     userId: user._id.valueOf(),
                     role: user.role
                 });
+            }
         });
 
         /**
          * Deserialize user information from session and retrieve user data.
          * - If the user is a "guest", the deserialized session is initialized as a guest.
+         * - If the user is from Keycloak, returns the Keycloak session data.
          * - Otherwise, fetches the user from the database using the user ID.
          */
-        passport.deserializeUser((session: { userId: string, username: string }, cb) => {
-            session.userId === "-1" ? cb(null, { userId: session.userId, username: "Guest", role: "guest" }) :
+        passport.deserializeUser((session: any, cb) => {
+            if (session.userId === "-1") {
+                cb(null, { userId: session.userId, username: "Guest", role: "guest" });
+            } else if (session.provider === "keycloak") {
+                cb(null, session);
+            } else {
                 User.findById(session.userId)
                     .then((user) => cb(null, user))
                     .catch(cb);
+            }
         });
 
         // Initialize Passport middleware and session support
