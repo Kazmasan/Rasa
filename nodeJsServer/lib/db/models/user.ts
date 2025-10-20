@@ -7,7 +7,7 @@ const Schema = mongoose.Schema;
  * @extends {mongoose.Document}
  */
 export interface IUser extends mongoose.Document {
-    _id: ObjectId; // The unique identifier for the user document
+    userId: ObjectId; // The unique identifier for the user document
     username: string; // The user's username
     role: "guest" | "user" | "admin"; // The role of the user, which can be one of "guest", "user", or "admin"
     salt: string; // The salt used for password hashing

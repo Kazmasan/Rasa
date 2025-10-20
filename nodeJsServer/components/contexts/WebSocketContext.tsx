@@ -314,7 +314,6 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const sendMessage = (message: string) => {
-        console.log("message sended")
         if (isAdmin.current) {
             //Send the string into the selected client
             try {

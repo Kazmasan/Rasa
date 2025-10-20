@@ -116,7 +116,7 @@ keycloakAuth.get("/callback", async (req, res) => {
 
     // Create a user object for the Express session (compatible with your existing system)
     const tempUser = {
-      _id: userInfo.sub,
+      userId: userInfo.sub,
       username: userInfo.preferred_username || userInfo.email,
       email: userInfo.email,
       name: userInfo.name,
@@ -125,8 +125,6 @@ keycloakAuth.get("/callback", async (req, res) => {
       refreshToken: tokens.refresh_token,
       role: "user" // Default role for Keycloak users
     };
-
-    //console.log(tempUser);
 
     // Log the user into the Express session
     req.login(tempUser, (err) => {

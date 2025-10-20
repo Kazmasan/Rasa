@@ -12,6 +12,7 @@ const ACTION_URL = 'http://localhost:5055/webhook';
  * @returns Path to the log file.
  */
 function setupLogging(userId: string) {
+  console.log("setupLogging");
   // Create logs directory if it doesn't exist
   const logsDir = path.join(process.cwd(), 'logs');
   if (!fs.existsSync(logsDir)) {
@@ -20,6 +21,27 @@ function setupLogging(userId: string) {
 
   // Create file if it doesn't exist and initialize with an empty array
   const logFilePath = path.join(logsDir, `${userId}.json`);
+  console.log("userId:", userId);
+  if (!fs.existsSync(logFilePath)) {
+    fs.writeFileSync(logFilePath, '[]');
+  }
+  return logFilePath;
+}
+
+/**
+ * Parallel logging system for user interactions with Rasa.
+ * Each user has a separate log file to prevent concurrency issues based on userId.
+ * @param userId - Unique identifier for the user.
+ * @returns Path to the user's log file.
+ */
+function setupLoggingBis(userId: string, conversationId: string) {
+  console.log("setupLoggingBis");
+  var logsFolder = 'logs/'+ userId;
+  const logsDir = path.join(process.cwd(), logsFolder);
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir);
+  }
+  const logFilePath = path.join(logsDir, `${conversationId}.json`);
   if (!fs.existsSync(logFilePath)) {
     fs.writeFileSync(logFilePath, '[]');
   }
@@ -264,4 +286,4 @@ async function triggerAction(nextAction: string, slot: Record<string, string>) {
     });
 }
 
-export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, logInteraction, logSingleEntry, getUserLoggedList, parseLogsToSend };
+export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, setupLoggingBis, logInteraction, logSingleEntry, getUserLoggedList, parseLogsToSend };

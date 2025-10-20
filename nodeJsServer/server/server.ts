@@ -100,7 +100,7 @@ app.prepare()
         passport.serializeUser((user: IUser, cb) => {
             user.username === "guest" ? cb(null, { userId: "-1", role: "guest" }) :
                 cb(null, {
-                    userId: user._id.valueOf(),
+                    userId: user.userId.valueOf(),
                     role: user.role,
                     provider: user.provider
                 });

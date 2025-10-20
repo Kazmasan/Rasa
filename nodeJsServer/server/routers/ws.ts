@@ -337,7 +337,7 @@ export default (server: Server) => {
         //User logic
         else {
             // Create the logging file
-            ws.logFileHandle = rasaClient.setupLogging(conversationId);
+            ws.logFileHandle = rasaClient.setupLoggingBis(session.userId, conversationId);
 
             if (ws.readyState !== WebSocket.OPEN) return;
             clients.set(conversationId, ws);
