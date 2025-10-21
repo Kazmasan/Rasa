@@ -2,8 +2,8 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 
-const RASA_URL = 'http://localhost:5005/webhooks/rest/webhook';
-const ACTION_URL = 'http://localhost:5055/webhook';
+const RASA_URL = 'http://localhost:5005';
+const ACTION_URL = 'http://localhost:5055';
 
 /**
  * Ensures the setup for logging a specific user. Creates a unique log file per user.
@@ -35,7 +35,6 @@ function setupLogging(userId: string) {
  * @returns Path to the user's log file.
  */
 function setupLoggingBis(userId: string, conversationId: string) {
-  console.log("setupLoggingBis");
   var logsFolder = 'logs/'+ userId;
   const logsDir = path.join(process.cwd(), logsFolder);
   if (!fs.existsSync(logsDir)) {
@@ -173,16 +172,16 @@ function parseLogsToSend(
 /**
  * Sends a message to the Rasa server and formats the response.
  * @param message - Message to send.
- * @param userId - Sender's unique identifier.
+ * @param conversationId - Sender's unique identifier.
  * @returns Promise resolving to a formatted Rasa response.
  */
-async function sendMessageToRasa(message: string, userId: string) {
-  return fetch(RASA_URL, {
+async function sendMessageToRasa(message: string, conversationId: string) {
+  return fetch(RASA_URL + '/webhooks/rest/webhook', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ sender: userId, message }),
+    body: JSON.stringify({ sender: conversationId, message }),
   })
     .then(response => response.json())
     .then(data => {
@@ -203,6 +202,46 @@ async function sendMessageToRasa(message: string, userId: string) {
       throw new Error(`Failed to send message to Rasa: ${error.message}`);
     });
 }
+/**
+ * test function that store a json into a file
+ * @param data - Data to write.
+ */
+function logTestToFile(data: any) {
+  const filePath = path.join(__dirname, "test.json");
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+}
+
+
+/**
+ * Load a conversation for a given conversation ID.
+ * @param conversationId - The ID of the conversation to load.
+ * @returns Array of user interaction logs.
+ */
+async function loadConversation(conversationId: string) {
+  return fetch(`${RASA_URL}/conversations/${conversationId}/tracker`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error(`Failed to load conversation: ${response.statusText}`);
+      
+      return response.json();
+    })
+    .then(data => {
+      //pour chaque "event": "user" ou "bot", extraire "text"
+      const logs: any[] = [];
+      data.events.forEach((event: any) => {
+        if (event.event === "user" || event.event === "bot") {
+          logs.push({ sender: event.event, timestamp: event.timestamp, text: event.text });
+        }
+      });
+      logTestToFile(logs);
+      return logs;
+    });
+}
+
+
+
 
 /**
  * Parses a command string into an action and slots.
@@ -263,7 +302,7 @@ async function triggerAction(nextAction: string, slot: Record<string, string>) {
     }
   };
 
-  return fetch(ACTION_URL, {
+  return fetch(ACTION_URL + '/webhook', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -286,4 +325,23 @@ async function triggerAction(nextAction: string, slot: Record<string, string>) {
     });
 }
 
-export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, setupLoggingBis, logInteraction, logSingleEntry, getUserLoggedList, parseLogsToSend };
+/**
+ * Return a list of conversation IDs for a given user. 
+ * @param userId - The ID of the user.
+ * @returns Promise resolving to the server response.
+ */
+async function getUserLog(userId: string) {
+  // Look for conversation files inside logs/<userId>
+  const userLogsDir = path.join(process.cwd(), 'logs', userId);
+  if (!fs.existsSync(userLogsDir)) {
+    return [];
+  }
+
+  const files = fs.readdirSync(userLogsDir);
+  // Only return .json files and strip the extension to get conversation IDs
+  return files
+    .filter(file => path.extname(file).toLowerCase() === '.json')
+    .map(file => path.basename(file, '.json'));
+}
+
+export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, setupLoggingBis, logInteraction, logSingleEntry, getUserLoggedList, getUserLog, parseLogsToSend, loadConversation };

@@ -338,7 +338,10 @@ export default (server: Server) => {
         else {
             // Create the logging file
             ws.logFileHandle = rasaClient.setupLoggingBis(session.userId, conversationId);
-
+            // Get the list of conversation IDs for this user
+            //const userLog = await rasaClient.getUserLog(session.userId);
+            //console.log("userLog", userLog);
+            rasaClient.loadConversation("5c543549-e586-431f-9ddc-c9e81c6058fc");
             if (ws.readyState !== WebSocket.OPEN) return;
             clients.set(conversationId, ws);
             console.log(`New client connected with user_id: ${conversationId}`);
