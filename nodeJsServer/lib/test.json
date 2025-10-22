@@ -1,32 +1,56 @@
 [
   {
-    "sender": "user",
-    "timestamp": 1761048190.6456409,
-    "text": "hello"
+    "timestamp": "2025-10-21T12:03:10.645Z",
+    "message": {
+      "str": "hello",
+      "srv": false
+    }
   },
   {
-    "sender": "bot",
-    "timestamp": 1761048190.6532006,
-    "text": "Hi! I can help you query patient data. For example: 'Show males aged 40 to 60 with NIHSS > 4'."
+    "timestamp": "2025-10-21T12:03:10.653Z",
+    "message": {
+      "str": "Hi! I can help you query patient data. For example: 'Show males aged 40 to 60 with NIHSS > 4'.",
+      "srv": true
+    }
   },
   {
-    "sender": "user",
-    "timestamp": 1761048193.184051,
-    "text": "help me"
+    "timestamp": "2025-10-21T12:03:10.653Z",
+    "data": {}
   },
   {
-    "sender": "bot",
-    "timestamp": 1761048193.1856582,
-    "text": "Sorry, I didn’t understand that. Could you rephrase?"
+    "timestamp": "2025-10-21T12:03:13.184Z",
+    "message": {
+      "str": "help me",
+      "srv": false
+    }
   },
   {
-    "sender": "user",
-    "timestamp": 1761048196.3012564,
-    "text": "ok"
+    "timestamp": "2025-10-21T12:03:13.185Z",
+    "message": {
+      "str": "Sorry, I didn’t understand that. Could you rephrase?",
+      "srv": true
+    }
   },
   {
-    "sender": "bot",
-    "timestamp": 1761048196.3029203,
-    "text": "Hi! I can help you query patient data. For example: 'Show males aged 40 to 60 with NIHSS > 4'."
+    "timestamp": "2025-10-21T12:03:13.185Z",
+    "data": {}
+  },
+  {
+    "timestamp": "2025-10-21T12:03:16.301Z",
+    "message": {
+      "str": "ok",
+      "srv": false
+    }
+  },
+  {
+    "timestamp": "2025-10-21T12:03:16.302Z",
+    "message": {
+      "str": "Hi! I can help you query patient data. For example: 'Show males aged 40 to 60 with NIHSS > 4'.",
+      "srv": true
+    }
+  },
+  {
+    "timestamp": "2025-10-21T12:03:16.302Z",
+    "data": {}
   }
 ]

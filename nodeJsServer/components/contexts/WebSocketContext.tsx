@@ -373,23 +373,41 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const basePath = process.env.NEXT_PUBLIC_BASE_PATH ? process.env.NEXT_PUBLIC_BASE_PATH.toLowerCase() : "";
-        const ws = new WebSocket(`${basePath}/ws`);
-        socket.current = ws;
 
-        ws.onopen = () => {
-            console.log("Connected to the WebSocket server!");
+        // Delay the actual creation of the WebSocket by a tick.
+        // This avoids the React 18 Strict Mode double-mount behaviour in development
+        // which would create then immediately close a socket then create another one.
+        // Scheduling creation with setTimeout(0) prevents the first (transient) mount
+        // from creating a socket that will be immediately torn down.
+        let createTimeout: ReturnType<typeof setTimeout> | null = null;
+
+        const createSocket = () => {
+            const ws = new WebSocket(`${basePath}/ws`);
+            socket.current = ws;
+
+            ws.onopen = () => {
+                console.log("Connected to the WebSocket server!");
+            };
+
+            ws.onmessage = (event: MessageEvent) => {
+                const data = JSON.parse(event.data);
+                handleIncommingMessage(data);
+            };
+
+            ws.onclose = () => console.log('Disconnected from the WebSocket server');
+
+            ws.onerror = (error) => console.log('WebSocket error', error);
         };
 
-        ws.onmessage = (event: MessageEvent) => {
-            const data = JSON.parse(event.data);
-            handleIncommingMessage(data);
+        // Schedule creation on next tick
+        createTimeout = setTimeout(createSocket, 0);
+
+        return () => {
+            if (createTimeout) clearTimeout(createTimeout);
+            if (socket.current) {
+                try { socket.current.close(); } catch (e) { /* ignore */ }
+            }
         };
-
-        ws.onclose = () => console.log('Disconnected from the WebSocket server');
-
-        ws.onerror = (error) => console.log('WebSocket error', error);
-
-        return () => ws.close();
     }, []);
 
     return (

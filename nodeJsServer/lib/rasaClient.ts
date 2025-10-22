@@ -4,6 +4,7 @@ import path from 'path';
 
 const RASA_URL = 'http://localhost:5005';
 const ACTION_URL = 'http://localhost:5055';
+const LOGS_DIR = path.join(process.cwd(), 'logs/logs.json');
 
 /**
  * Ensures the setup for logging a specific user. Creates a unique log file per user.
@@ -30,16 +31,37 @@ function setupLogging(userId: string) {
 
 /**
  * Parallel logging system for user interactions with Rasa.
- * Each user has a separate log file to prevent concurrency issues based on userId.
+ * All of the conversations ID of a user are stored in a dedicated folder.
+ * @param conversationId - Unique identifier for the conversation.
  * @param userId - Unique identifier for the user.
  * @returns Path to the user's log file.
  */
 function setupLoggingBis(userId: string, conversationId: string) {
-  var logsFolder = 'logs/'+ userId;
-  const logsDir = path.join(process.cwd(), logsFolder);
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir);
+
+  // Create logs directory if it doesn't exist
+  if ((!fs.existsSync(LOGS_DIR))) {
+    fs.mkdirSync(path.dirname(LOGS_DIR), { recursive: true });
+    fs.writeFileSync(LOGS_DIR, '{}');
   }
+  //add userId if not present
+  const fileContent = fs.readFileSync(LOGS_DIR, 'utf8');
+  const logData = JSON.parse(fileContent);
+  if (!logData[userId]) {
+    logData[userId] = [];
+    fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
+  }
+  //append conversationId if not present
+  if (!logData[userId].includes(conversationId)) {
+    logData[userId].push(conversationId);
+    fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
+  }
+  
+  const logsDir = path.join(process.cwd(), 'logs', userId);
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+
+  // Create file if it doesn't exist and initialize with an empty array
   const logFilePath = path.join(logsDir, `${conversationId}.json`);
   if (!fs.existsSync(logFilePath)) {
     fs.writeFileSync(logFilePath, '[]');
@@ -217,27 +239,54 @@ function logTestToFile(data: any) {
  * @param conversationId - The ID of the conversation to load.
  * @returns Array of user interaction logs.
  */
-async function loadConversation(conversationId: string) {
-  return fetch(`${RASA_URL}/conversations/${conversationId}/tracker`, {
+async function loadConversation(conversationId: string): Promise<Rasa.UserInteractionLog[]> {
+  const response = await fetch(`${RASA_URL}/conversations/${conversationId}/tracker`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
-  })
-    .then(response => {
-      if (!response.ok) throw new Error(`Failed to load conversation: ${response.statusText}`);
-      
-      return response.json();
-    })
-    .then(data => {
-      //pour chaque "event": "user" ou "bot", extraire "text"
-      const logs: any[] = [];
-      data.events.forEach((event: any) => {
-        if (event.event === "user" || event.event === "bot") {
-          logs.push({ sender: event.event, timestamp: event.timestamp, text: event.text });
-        }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to load conversation: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const logs: Rasa.UserInteractionLog[] = [];
+
+  (data.events || []).forEach((event: any) => {
+    const rawTs = event.timestamp;
+    const timestamp =
+      typeof rawTs === "number"
+        ? new Date(rawTs * 1000).toISOString()
+        : new Date().toISOString();
+
+    if (event.event === "user" && typeof event.text === "string") {
+      logs.push({
+        timestamp,
+        message: { str: event.text, srv: false },
       });
-      logTestToFile(logs);
-      return logs;
-    });
+    } else if (event.event === "bot") {
+      // bot text message
+      if (typeof event.text === "string") {
+        logs.push({
+          timestamp,
+          message: { str: event.text, srv: true },
+        });
+      }
+      // bot custom payload / data
+      if (event.data) {
+        logs.push({
+          timestamp,
+          data: {
+            data: event.data?.data?.file_content ?? event.data?.data,
+            args: event.data?.args?.file_content ?? event.data?.args,
+          },
+        });
+      }
+    }
+  });
+
+  logTestToFile(logs);
+  return logs;
 }
 
 

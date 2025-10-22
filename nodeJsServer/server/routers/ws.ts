@@ -70,12 +70,12 @@ export default (server: Server) => {
         if (!signedCookies.sessionId) return;
 
         // Retrieve session data using the session ID from cookies
-        const sessionContent: ISession | null = await Session.findById(signedCookies.sessionId);
+    const sessionContent: ISession | null = await Session.findById(signedCookies.sessionId);
         if (!sessionContent) return ws.close();
 
-        const conversationId = `${crypto.randomUUID()}`;
-        const session = sessionContent.session.passport.user;
-
+    const conversationId = `${crypto.randomUUID()}`;
+    const session = sessionContent.session.passport.user;
+    
         ws.on('message', (message) => {
             const parsedMessage = JSON.parse(message.toString()) as CustomWebSocket.Client.ToServerMessage;
 
