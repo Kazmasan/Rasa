@@ -41,6 +41,11 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
         };
     };
 
+    //print debug conversationIdsList
+    useEffect(() => {
+        console.debug('conversationIdsList:', conversationIdsList);
+    }, [conversationIdsList]);
+
     return (
         <div className="w-full h-full rounded-[15px] flex flex-col items-center bg-white shadow-[0px_3.5px_5.5px_0px_rgba(0,_0,_0,_0.02)]">
             <div className="w-full h-[50px] rounded-t-[15px] z-10 flex items-center justify-between px-[20px] bg-gradient-to-tl from-secondary to-primary">
@@ -50,6 +55,10 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                 </div>
                 {
                     userIsAdmin &&
+                    <Select value={currentConversationId} placeholder="Select a conversation:" options={conversationIdsList.map(cId => ({ label: cId, value: cId }))} onChange={setCurrentConversation} onChangeHandleValueChange={true} />
+                }
+                {
+                    !userIsAdmin &&
                     <Select value={currentConversationId} placeholder="Select a conversation:" options={conversationIdsList.map(cId => ({ label: cId, value: cId }))} onChange={setCurrentConversation} onChangeHandleValueChange={true} />
                 }
             </div>

@@ -129,7 +129,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const [commands, setCommands] = useState<ICommand[]>([]);
 
     // Function to send a WebSocket message to the server
-    function sendWebSocketMessageToServer(message: CustomWebSocket.Client.ToServerMessage) {
+    function sendWebSocketMessageToServer(message: CustomWebSocket.Client.ToServerMessage | Record<string, any>) {
         try {
             if (socket.current && socket.current.readyState === WebSocket.OPEN) {
                 socket.current.send(JSON.stringify(message));
@@ -262,7 +262,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
 
     // Function to send a message to the server
     function sendMessageServer(message: string) {
-        sendWebSocketMessageToServer({ action: 'sendMessageToRasa', message });
+        sendWebSocketMessageToServer({ action: 'sendMessageToRasa', message, currentConversationId });
     };
 
     // Function to send a message to the selected user via the server
@@ -311,7 +311,17 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         setCurrentConversation("");
         setConversationIdsList(userLoggedList);
         setOpenConversationIdsList(connectedList);
+
     };
+
+        // Debug: log the actual states when they change to verify updates
+    useEffect(() => {
+        console.log('conversationIdsList state updated:', conversationIdsList);
+    }, [conversationIdsList]);
+
+    useEffect(() => {
+        console.log('openConversationIdsList state updated:', openConversationIdsList);
+    }, [openConversationIdsList]);
 
     const sendMessage = (message: string) => {
         if (isAdmin.current) {
@@ -356,6 +366,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         try {
             console.log('Selected client:', conversationId);
             setCurrentConversationId(conversationId);
+            !isAdmin.current ? setOpenConversationIdsList([conversationId]) : null;
             setChatMessages([]);
             setCurrentChart(null);
             setCharts([]);

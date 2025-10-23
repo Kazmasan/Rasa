@@ -224,15 +224,6 @@ async function sendMessageToRasa(message: string, conversationId: string) {
       throw new Error(`Failed to send message to Rasa: ${error.message}`);
     });
 }
-/**
- * test function that store a json into a file
- * @param data - Data to write.
- */
-function logTestToFile(data: any) {
-  const filePath = path.join(__dirname, "test.json");
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
-}
-
 
 /**
  * Load a conversation for a given conversation ID.
@@ -285,7 +276,6 @@ async function loadConversation(conversationId: string): Promise<Rasa.UserIntera
     }
   });
 
-  logTestToFile(logs);
   return logs;
 }
 
@@ -381,16 +371,13 @@ async function triggerAction(nextAction: string, slot: Record<string, string>) {
  */
 async function getUserLog(userId: string) {
   // Look for conversation files inside logs/<userId>
-  const userLogsDir = path.join(process.cwd(), 'logs', userId);
-  if (!fs.existsSync(userLogsDir)) {
+  if (!fs.existsSync(LOGS_DIR)) {
     return [];
   }
-
-  const files = fs.readdirSync(userLogsDir);
-  // Only return .json files and strip the extension to get conversation IDs
-  return files
-    .filter(file => path.extname(file).toLowerCase() === '.json')
-    .map(file => path.basename(file, '.json'));
+  // Read logs.json and get conversation IDs for the user
+  const fileContent = fs.readFileSync(path.join(LOGS_DIR), 'utf8');
+  const logData = JSON.parse(fileContent);
+  return logData[userId] || [];
 }
 
 export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, setupLoggingBis, logInteraction, logSingleEntry, getUserLoggedList, getUserLog, parseLogsToSend, loadConversation };

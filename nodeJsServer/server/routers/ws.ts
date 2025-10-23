@@ -76,7 +76,7 @@ export default (server: Server) => {
     const conversationId = `${crypto.randomUUID()}`;
     const session = sessionContent.session.passport.user;
     
-        ws.on('message', (message) => {
+        ws.on('message', async (message) => {
             const parsedMessage = JSON.parse(message.toString()) as CustomWebSocket.Client.ToServerMessage;
 
             // Handle case when the client requests server-based JSON data
@@ -113,10 +113,13 @@ export default (server: Server) => {
             else if (parsedMessage.action === 'fetchUser') {
                 ws.selectedUser = parsedMessage.json_name; //user selected by the admin
                 console.log(`Admin asking for ${parsedMessage.json_name} logs`);
-                const jsonData = fs.readFileSync(path.join(process.cwd(), 'logs', `${parsedMessage.json_name}.json`));
+                //const jsonData = fs.readFileSync(path.join(process.cwd(), 'logs', `${parsedMessage.json_name}.json`));
+                const jsonData = await rasaClient.loadConversation(parsedMessage.json_name);
+                console.log(jsonData)
 
                 // Parse and send user logs to the admin
-                const parsedMessageToSend = rasaClient.parseLogsToSend(JSON.parse(jsonData.toString()));
+
+                const parsedMessageToSend = rasaClient.parseLogsToSend(jsonData);
                 sendWebSocketMessageToClient(ws, parsedMessageToSend);
             }
 
@@ -124,11 +127,9 @@ export default (server: Server) => {
             else if (parsedMessage.action === 'sendMessageToRasa') {
                 let rasaTimestamp = null;
                 let userTimestamp = new Date().toISOString();
-                console.log(`${conversationId} asking: ${parsedMessage.message}`);
 
-
-                // Send message to Rasa and handle response
-                rasaClient.sendMessageToRasa(parsedMessage.message, conversationId)
+                // Ensure parentheses are correct so we call the function and then chain .then()
+                rasaClient.sendMessageToRasa(parsedMessage.message, (parsedMessage as { currentConversationId?: string }).currentConversationId || conversationId)
                     .then(response => {
                         // Log and send the response back to the client
                         rasaTimestamp = new Date().toISOString();
@@ -162,7 +163,7 @@ export default (server: Server) => {
                         };
 
                         // Log user and Rasa interaction
-                        rasaClient.logInteraction(ws.logFileHandle as string, userTimestamp, parsedMessage.message, rasaTimestamp, response);
+                        //rasaClient.logInteraction(ws.logFileHandle as string, userTimestamp, parsedMessage.message, rasaTimestamp, response);
                     })
                     .catch(error => {
                         console.error('Error sending message to Rasa:', error);
@@ -184,7 +185,7 @@ export default (server: Server) => {
                                 error: false,
                                 message: [{ str: parsedMessage.message, srv: true }]
                             });
-                            rasaClient.logSingleEntry(selectedClient.logFileHandle as string, parsedMessage.message, true);
+                            //rasaClient.logSingleEntry(selectedClient.logFileHandle as string, parsedMessage.message, true);
                         } else {
                             throw new Error("Couldn't find selected user");
                         }
@@ -253,7 +254,7 @@ export default (server: Server) => {
                                         });
 
                                         // Log the response for the selected user
-                                        rasaClient.logSingleEntry(selectedClient.logFileHandle as string, response.message, true);
+                                        //rasaClient.logSingleEntry(selectedClient.logFileHandle as string, response.message, true);
                                     } else {
                                         throw new Error("Couldn't find selected user");
                                     }
@@ -337,11 +338,11 @@ export default (server: Server) => {
         //User logic
         else {
             // Create the logging file
-            ws.logFileHandle = rasaClient.setupLoggingBis(session.userId, conversationId);
+            //ws.logFileHandle = rasaClient.setupLoggingBis(session.userId, conversationId);
+            rasaClient.setupLoggingBis(session.userId, conversationId);
             // Get the list of conversation IDs for this user
-            //const userLog = await rasaClient.getUserLog(session.userId);
-            //console.log("userLog", userLog);
-            rasaClient.loadConversation("5c543549-e586-431f-9ddc-c9e81c6058fc");
+            const userLog = await rasaClient.getUserLog(session.userId);
+
             if (ws.readyState !== WebSocket.OPEN) return;
             clients.set(conversationId, ws);
             console.log(`New client connected with user_id: ${conversationId}`);
@@ -357,6 +358,20 @@ export default (server: Server) => {
             admins.forEach(admin => {
                 if (admin.readyState === WebSocket.OPEN) { sendWebSocketMessageToClient(admin, clientListMessage) }
             });
+
+            // Also send the list of conversation IDs related to this user back to the user client
+            // so that non-admin clients can receive their own conversationIdsList in the same shape.
+            try {
+                const userClientMessage = {
+                    clients: {
+                        connectedList: Array.from(clients.keys()) as string[],
+                        userLoggedList: userLog
+                    }
+                };
+                if (ws.readyState === WebSocket.OPEN) sendWebSocketMessageToClient(ws, userClientMessage);
+            } catch (err) {
+                console.error('Failed to send user conversation list to client:', err);
+            }
         }
     });
 };

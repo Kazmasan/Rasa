@@ -90,7 +90,7 @@ const UserSelect = ({ options, value, onChange, placeholder = "Select an element
 
     return (
         <div ref={containerRef}
-            className="w-full h-[36px] text-sm flex flex-col overflow-y-visible"
+            className="w-full h-[36px] text-sm flex flex-col overflow-y-visible relative"
             onClick={handleSelectElementClick}>
             <div className={cn(
                 "w-full h-[36px] shrink-0 rounded-[4px] flex items-center justify-between px-[10px] bg-background border border-gray-light hover:border-secondary cursor-pointer transition",
@@ -104,7 +104,7 @@ const UserSelect = ({ options, value, onChange, placeholder = "Select an element
             </div>
             <div ref={optionsRef}
                 className={cn(
-                    "hidden cursor-auto w-full rounded-b-[4px] flex-col py-[6px] gap-[6px] bg-accent max-h-[50vh] self-stretch",
+                    "hidden cursor-auto w-full rounded-b-[4px] flex-col py-[6px] gap-[6px] bg-accent max-h-[50vh] overflow-y-auto z-50 shadow-lg absolute left-0 mt-1",
                     showOptions && "flex"
                 )}>
 
