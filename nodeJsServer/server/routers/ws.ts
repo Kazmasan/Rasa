@@ -343,6 +343,8 @@ export default (server: Server) => {
             // Get the list of conversation IDs for this user
             const userLog = await rasaClient.getUserLog(session.userId);
 
+            console.log('userLog:', userLog);
+
             if (ws.readyState !== WebSocket.OPEN) return;
             clients.set(conversationId, ws);
             console.log(`New client connected with user_id: ${conversationId}`);

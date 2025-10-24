@@ -50,9 +50,32 @@ function setupLoggingBis(userId: string, conversationId: string) {
     logData[userId] = [];
     fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
   }
-  //append conversationId if not present
-  if (!logData[userId].includes(conversationId)) {
-    logData[userId].push(conversationId);
+
+  // Ensure existing entries are normalized to objects with metadata
+  // New shape: { id: string, creationDate: string, lastModifiedDate: string }
+  const nowIso = new Date().toISOString();
+  logData[userId] = logData[userId].map((entry: any) => {
+    if (typeof entry === 'string') {
+      return { id: entry, creationDate: nowIso, lastModifiedDate: nowIso };
+    }
+    // If already an object but missing fields, fill them
+    return {
+      id: entry.id ?? entry.conversationId ?? entry,
+      creationDate: entry.creationDate ?? entry.createdAt ?? nowIso,
+      lastModifiedDate: entry.lastModifiedDate ?? entry.updatedAt ?? nowIso,
+    };
+  });
+
+  // append conversationId object if not present
+  const existing = logData[userId].find((e: any) => e.id === conversationId);
+  if (!existing) {
+    const convObj = { id: conversationId, creationDate: nowIso, lastModifiedDate: nowIso };
+    logData[userId].push(convObj);
+    fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
+  } else {
+    // If already exists, ensure lastModifiedDate is up to date
+    // We update lastModifiedDate here to the current time to reflect access; actual conversation edits will update later.
+    existing.lastModifiedDate = nowIso;
     fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
   }
   

@@ -75,6 +75,12 @@ interface ICommand {
 /**
  * The structure of the WebSocket context used across the application.
  */
+interface ConversationEntry {
+    id: string;
+    creationDate?: string;
+    lastModifiedDate?: string;
+}
+
 type WebSocketContextType = {
     messages: IMessage[];
     sendMessage: (message: string) => void;
@@ -82,8 +88,8 @@ type WebSocketContextType = {
     currentChart: ChatbotChart | null;
     setChartFromHistory: (chartIndex: ChatbotChart) => void;
     setImageForChart: (chart: ChatbotChart, image: string) => void;
-    openConversationIdsList: string[]
-    conversationIdsList: string[];
+    openConversationIdsList: string[];
+    conversationIdsList: ConversationEntry[];
     currentConversationId: string;
     setCurrentConversation: (conversationId: string) => void;
     commands: ICommand[];
@@ -122,7 +128,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const [charts, setCharts] = useState<ChatbotChart[]>([]);
     const [currentChart, setCurrentChart] = useState<ChatbotChart | null>(null);
     const [openConversationIdsList, setOpenConversationIdsList] = useState<string[]>([]);
-    const [conversationIdsList, setConversationIdsList] = useState<string[]>([]);
+    const [conversationIdsList, setConversationIdsList] = useState<ConversationEntry[]>([]);
     const [currentConversationId, setCurrentConversationId] = useState<string>("");
     const lastChartDatasRef = useRef<{ data: null | ChatbotChartData[], args: null | ChatbotChartArgs }>({ data: null, args: null });
     const maxCharts = 5;
@@ -307,10 +313,19 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         setCommands((prevCommands) => [...prevCommands, command]);
     };
 
-    function updateClientList({ connectedList, userLoggedList }: { connectedList: string[], userLoggedList: string[] }) {
+    function normalizeToConversationEntryArray(list: any[]): ConversationEntry[] {
+        const nowIso = new Date().toISOString();
+        return (list || []).map(item => {
+            if (typeof item === 'string') return { id: item, creationDate: nowIso, lastModifiedDate: nowIso };
+            if (item && typeof item === 'object') return { id: item.id ?? item.conversationId ?? String(item), creationDate: item.creationDate ?? item.createdAt, lastModifiedDate: item.lastModifiedDate ?? item.updatedAt };
+            return { id: String(item), creationDate: nowIso, lastModifiedDate: nowIso };
+        });
+    }
+
+    function updateClientList({ connectedList, userLoggedList }: { connectedList: string[], userLoggedList: any[] }) {
         setCurrentConversation("");
-        setConversationIdsList(userLoggedList);
-        setOpenConversationIdsList(connectedList);
+        setConversationIdsList(normalizeToConversationEntryArray(userLoggedList));
+        setOpenConversationIdsList(connectedList || []);
 
     };
 

@@ -53,14 +53,6 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                     <p className="text-background font">Chat with the bot</p>
                     <RobotIcon width={24} height={24} />
                 </div>
-                {
-                    userIsAdmin &&
-                    <Select value={currentConversationId} placeholder="Select a conversation:" options={conversationIdsList.map(cId => ({ label: cId, value: cId }))} onChange={setCurrentConversation} onChangeHandleValueChange={true} />
-                }
-                {
-                    !userIsAdmin &&
-                    <Select value={currentConversationId} placeholder="Select a conversation:" options={conversationIdsList.map(cId => ({ label: cId, value: cId }))} onChange={setCurrentConversation} onChangeHandleValueChange={true} />
-                }
             </div>
             <WaveAsset className="w-full" />
             <div className="w-full flex-grow relative overflow-hidden">
@@ -82,6 +74,26 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                     <SendIcon width={20} height={20} className="fill-background" />
                 </div>
             </div>
+                {
+                    userIsAdmin &&
+                    <Select
+                        value={currentConversationId}
+                        placeholder="Select a conversation:"
+                        options={conversationIdsList.map((entry: any) => ({ label: typeof entry === 'string' ? entry : entry.id, value: typeof entry === 'string' ? entry : entry.id }))}
+                        onChange={setCurrentConversation}
+                        onChangeHandleValueChange={true}
+                    />
+                }
+                {
+                    !userIsAdmin &&
+                    <Select
+                        value={currentConversationId}
+                        placeholder="Select a conversation:"
+                        options={conversationIdsList.map((entry: any) => ({ label: typeof entry === 'string' ? entry : entry.id, value: typeof entry === 'string' ? entry : entry.id }))}
+                        onChange={setCurrentConversation}
+                        onChangeHandleValueChange={true}
+                    />
+                }
         </div>
     );
 }
