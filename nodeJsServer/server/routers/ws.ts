@@ -9,8 +9,8 @@ import { Session, ISession } from "../../lib/db/models/session";
 import crypto from "crypto";
 
 // Track connected clients and admins
-let clients: Map<String, CustomWebSocket.User> = new Map();
-let admins: Map<String, CustomWebSocket.User> = new Map();
+let clients: Map<string, CustomWebSocket.User> = new Map();
+let admins: Map<string, CustomWebSocket.User> = new Map();
 
 // List of actions that can be executed by admins
 const actionsList =
@@ -115,7 +115,6 @@ export default (server: Server) => {
                 console.log(`Admin asking for ${parsedMessage.json_name} logs`);
                 //const jsonData = fs.readFileSync(path.join(process.cwd(), 'logs', `${parsedMessage.json_name}.json`));
                 const jsonData = await rasaClient.loadConversation(parsedMessage.json_name);
-                console.log(jsonData)
 
                 // Parse and send user logs to the admin
 
@@ -125,14 +124,15 @@ export default (server: Server) => {
 
             // Handle case for sending a message to Rasa
             else if (parsedMessage.action === 'sendMessageToRasa') {
-                let rasaTimestamp = null;
-                let userTimestamp = new Date().toISOString();
 
                 // Ensure parentheses are correct so we call the function and then chain .then()
-                rasaClient.sendMessageToRasa(parsedMessage.message, (parsedMessage as { currentConversationId?: string }).currentConversationId || conversationId)
+                rasaClient.sendMessageToRasa(parsedMessage.message, parsedMessage.currentConversationId)
                     .then(response => {
                         // Log and send the response back to the client
-                        rasaTimestamp = new Date().toISOString();
+                        rasaClient.logInteraction(
+                            parsedMessage.currentConversationId,
+                            session.userId
+                        );
                         console.log("Response from Rasa Server:");
                         console.log(response);
 
@@ -174,6 +174,37 @@ export default (server: Server) => {
                     });
             }
 
+            else if (parsedMessage.action === 'setUpNewConversation') {
+                try {
+                    // Generate a new conversation ID
+                    const newConversationId = `${crypto.randomUUID()}`;
+                    
+                    // Set up logging for the new conversation
+                    rasaClient.setupLogging(session.userId, newConversationId);
+                    
+                    // Get updated user logs
+                    const userLoggedList = await rasaClient.getUserLog(session.userId);
+                    
+                    // Add new conversation to clients map
+                    clients.set(newConversationId, ws);
+                    console.log(`New client connected with user_id: ${newConversationId}`);
+                    
+                    sendWebSocketMessageToClient(ws, {
+                        clients: {
+                            connectedId: newConversationId,
+                            userLoggedList: userLoggedList
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Error setting up new conversation:', error);
+                    sendWebSocketMessageToClient(ws, {
+                        error: true,
+                        message: [{ str: 'Failed to set up new conversation', srv: true }]
+                    });
+                }
+            }
+
             // Handle case for sending a message to a specific user
             else if (parsedMessage.action === 'sendMessageToUser') {
                 try {
@@ -183,7 +214,7 @@ export default (server: Server) => {
                         if (selectedClient) {
                             sendWebSocketMessageToClient(selectedClient, {
                                 error: false,
-                                message: [{ str: parsedMessage.message, srv: true }]
+                                message: [{ str: parsedMessage.message, srv: true }],
                             });
                             //rasaClient.logSingleEntry(selectedClient.logFileHandle as string, parsedMessage.message, true);
                         } else {
@@ -199,7 +230,8 @@ export default (server: Server) => {
                         message: [{ str: getErrorMessage(error), srv: true }]
                     });
                 };
-            };
+            }
+
 
             // Handle case for admin commands
             if (parsedMessage.action === 'admin') {
@@ -300,7 +332,7 @@ export default (server: Server) => {
                 const userLoggedList = rasaClient.getUserLoggedList();
                 const clientListMessage = {
                     clients: {
-                        connectedList: Array.from(clients.keys()) as string[],
+                        connectedId: conversationId,
                         userLoggedList: userLoggedList
                     }
                 };
@@ -319,61 +351,33 @@ export default (server: Server) => {
         //Welcome Message
         sendWebSocketMessageToClient(ws, { message: { str: 'Hello from server', srv: true }, isAdmin: session.role === "admin" });
 
-        //Admin logic
-        if (session.role === "admin") {
-            if (ws.readyState !== WebSocket.OPEN) return;
-            admins.set(conversationId, ws);
-            console.log(`New admin connected: ${conversationId}`);
+        const userLog = await rasaClient.getUserLog(session.userId);
+        //Get latest logId on the list
+        const latestLogId = userLog.length > 0 ? userLog[userLog.length - 1].id : `${crypto.randomUUID()}`;
 
-            // Send the current list of clients and users with logs to the new admin
-            const userLoggedList = rasaClient.getUserLoggedList();
-            const clientList = Array.from(clients.keys());
-            sendWebSocketMessageToClient(ws, {
-                clients: {
-                    connectedList: clientList as string[],
-                    userLoggedList: userLoggedList
-                }
-            })
+        // Create the logging file
+        //ws.logFileHandle = rasaClient.setupLogging(session.userId, conversationId);
+        if (userLog.length === 0) {
+            rasaClient.setupLogging(session.userId, conversationId);
         }
-        //User logic
-        else {
-            // Create the logging file
-            //ws.logFileHandle = rasaClient.setupLoggingBis(session.userId, conversationId);
-            rasaClient.setupLoggingBis(session.userId, conversationId);
-            // Get the list of conversation IDs for this user
-            const userLog = await rasaClient.getUserLog(session.userId);
 
-            console.log('userLog:', userLog);
+        if (ws.readyState !== WebSocket.OPEN) return;
 
-            if (ws.readyState !== WebSocket.OPEN) return;
-            clients.set(conversationId, ws);
-            console.log(`New client connected with user_id: ${conversationId}`);
 
-            // Send updated client list to all admins
-            const userLoggedList = rasaClient.getUserLoggedList();
-            const clientListMessage = {
+        clients.set(latestLogId, ws);
+        console.log(`New client connected with user_id: ${latestLogId}`);
+
+        // Send the list of conversation IDs related to this user back to the user client
+        try {
+            const userClientMessage = {
                 clients: {
-                    connectedList: Array.from(clients.keys()) as string[],
-                    userLoggedList: userLoggedList
+                    connectedId: latestLogId,
+                    userLoggedList: userLog
                 }
             };
-            admins.forEach(admin => {
-                if (admin.readyState === WebSocket.OPEN) { sendWebSocketMessageToClient(admin, clientListMessage) }
-            });
-
-            // Also send the list of conversation IDs related to this user back to the user client
-            // so that non-admin clients can receive their own conversationIdsList in the same shape.
-            try {
-                const userClientMessage = {
-                    clients: {
-                        connectedList: Array.from(clients.keys()) as string[],
-                        userLoggedList: userLog
-                    }
-                };
-                if (ws.readyState === WebSocket.OPEN) sendWebSocketMessageToClient(ws, userClientMessage);
-            } catch (err) {
-                console.error('Failed to send user conversation list to client:', err);
-            }
+            if (ws.readyState === WebSocket.OPEN) sendWebSocketMessageToClient(ws, userClientMessage);
+        } catch (err) {
+            console.error('Failed to send user conversation list to client:', err);
         }
     });
 };

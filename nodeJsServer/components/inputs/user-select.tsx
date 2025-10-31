@@ -15,12 +15,12 @@ interface SelectProps {
 };
 
 const UserOption = ({ label, value, onClick, isSelected }: { label: string, value: string, onClick: MouseEventHandler<HTMLDivElement>, isSelected?: boolean }) => {
-    const { openConversationIdsList } = useContext(WebSocketContext);
+    const { openConversationId } = useContext(WebSocketContext);
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
-        setIsOpen(openConversationIdsList.includes(value));
-    }, [openConversationIdsList]);
+        setIsOpen(openConversationId === value);
+    }, [openConversationId, value]);
 
     const isActive = isSelected || isOpen; // active if selected by value OR marked open (green dot)
 

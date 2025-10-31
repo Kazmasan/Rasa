@@ -31,9 +31,12 @@ declare global {
             } | {
                 action: "sendMessageToRasa" | "sendMessageToUser";
                 message: string;
+                currentConversationId: string;
             } | {
                 action: "admin";
                 command: string;
+            } | {
+                action: "setUpNewConversation";
             }
         }
 
@@ -46,6 +49,8 @@ declare global {
              * - `data`: Contains optional fields `data` or `args` for additional information.
              * - `clients`: Provides lists of connected discussions and logged-in users.
              * - `promptMsg`: Contains a prompt message with a string (`str`) and an error flag.
+             * - `newConversationId`: Provides a new conversation identifier when applicable.
+             * - `currentConversationId`: Provides the current conversation identifier when applicable.
              */
             export type ToClientMessage = {
                 isAdmin?: boolean
@@ -62,12 +67,13 @@ declare global {
                     args?: string;
                 };
                 clients?: {
-                    connectedList: string[]; userLoggedList: string[];
+                    connectedId: string; userLoggedList: string[];
                 };
                 promptMsg?: {
                     str: string;
                     error: boolean;
-                }
+                };
+                newConversationId?: string
             } | {
                 error: true
                 message: { str: string; srv: boolean }[]

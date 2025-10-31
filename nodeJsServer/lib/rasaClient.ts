@@ -7,36 +7,13 @@ const ACTION_URL = 'http://localhost:5055';
 const LOGS_DIR = path.join(process.cwd(), 'logs/logs.json');
 
 /**
- * Ensures the setup for logging a specific user. Creates a unique log file per user.
- * This avoids concurrency issues by isolating log files per client.
- * @param userId - Unique identifier for the user.
- * @returns Path to the log file.
- */
-function setupLogging(userId: string) {
-  console.log("setupLogging");
-  // Create logs directory if it doesn't exist
-  const logsDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir);
-  }
-
-  // Create file if it doesn't exist and initialize with an empty array
-  const logFilePath = path.join(logsDir, `${userId}.json`);
-  console.log("userId:", userId);
-  if (!fs.existsSync(logFilePath)) {
-    fs.writeFileSync(logFilePath, '[]');
-  }
-  return logFilePath;
-}
-
-/**
  * Parallel logging system for user interactions with Rasa.
  * All of the conversations ID of a user are stored in a dedicated folder.
  * @param conversationId - Unique identifier for the conversation.
  * @param userId - Unique identifier for the user.
  * @returns Path to the user's log file.
  */
-function setupLoggingBis(userId: string, conversationId: string) {
+function setupLogging(userId: string, conversationId: string) {
 
   // Create logs directory if it doesn't exist
   if ((!fs.existsSync(LOGS_DIR))) {
@@ -78,69 +55,26 @@ function setupLoggingBis(userId: string, conversationId: string) {
     existing.lastModifiedDate = nowIso;
     fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
   }
-  
-  const logsDir = path.join(process.cwd(), 'logs', userId);
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-  }
-
-  // Create file if it doesn't exist and initialize with an empty array
-  const logFilePath = path.join(logsDir, `${conversationId}.json`);
-  if (!fs.existsSync(logFilePath)) {
-    fs.writeFileSync(logFilePath, '[]');
-  }
-  return logFilePath;
 }
 
 /**
- * Logs a user's interaction (messages and Rasa responses) into a file.
- * @param fileHandle - Path to the log file.
- * @param userTimestamp - Timestamp of the user's message.
- * @param userMessage - The message sent by the user.
- * @param rasaTimestamp - Timestamp of the Rasa's response.
- * @param rasaResponse - Rasa's response object.
+ * Logs user interaction in the log file
+ * @param conversationId - Unique identifier for the conversation.
+ * @param userId - Unique identifier for the user.
  */
 function logInteraction(
-  fileHandle: string,
-  userTimestamp: string,
-  userMessage: string,
-  rasaTimestamp: string,
-  rasaResponse: Rasa.Response
+  conversationId: string,
+  userId: string
 ) {
-
-  const logEntries: Rasa.UserInteractionLog[] = [];
-
-  // User message log entry
-  logEntries.push({ timestamp: userTimestamp, message: { str: userMessage, srv: false } });
-
-  // Rasa response log entries
-  rasaResponse.message.forEach(response => {
-    logEntries.push({ timestamp: rasaTimestamp, message: { str: response.str, srv: response.srv } });
-  });
-
-  // Log the data if present
-  if (rasaResponse.data) {
-    logEntries.push({
-      timestamp: rasaTimestamp,
-      data: {
-        data: rasaResponse.data?.data?.file_content,
-        args: rasaResponse.data?.args?.file_content
-      }
-    });
+  //change lastModifiedDate of the conversation in logs.json
+  const fileContent = fs.readFileSync(LOGS_DIR, 'utf8');
+  const logData = JSON.parse(fileContent);
+  const userConversations = logData[userId] || [];
+  const conversation = userConversations.find((c: any) => c.id === conversationId);
+  if (conversation) {
+    conversation.lastModifiedDate = new Date().toISOString();
   }
-
-  // Read the existing content of the file and parse it
-  let logArray;
-  try {
-    const fileContent = fs.readFileSync(fileHandle, 'utf8');
-    logArray = JSON.parse(fileContent);
-  } catch (error) {
-    logArray = [];
-  }
-
-  // Append the new log entries and write it
-  logArray = logArray.concat(logEntries);
-  fs.writeFileSync(fileHandle, JSON.stringify(logArray, null, 2));
+  fs.writeFileSync(LOGS_DIR, JSON.stringify(logData, null, 2));
 }
 
 /**
@@ -397,10 +331,11 @@ async function getUserLog(userId: string) {
   if (!fs.existsSync(LOGS_DIR)) {
     return [];
   }
+
   // Read logs.json and get conversation IDs for the user
   const fileContent = fs.readFileSync(path.join(LOGS_DIR), 'utf8');
   const logData = JSON.parse(fileContent);
   return logData[userId] || [];
 }
 
-export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, setupLoggingBis, logInteraction, logSingleEntry, getUserLoggedList, getUserLog, parseLogsToSend, loadConversation };
+export { sendMessageToRasa, parseCommand, triggerAction, setupLogging, logInteraction, logSingleEntry, getUserLoggedList, getUserLog, parseLogsToSend, loadConversation };

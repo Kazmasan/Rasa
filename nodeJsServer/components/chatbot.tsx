@@ -10,7 +10,7 @@ import { UserSelect as Select } from "@/components/inputs/user-select";
 import { cn } from "@/lib/utils";
 
 export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdmin: false }) {
-    const { messages, sendMessage, openConversationIdsList, conversationIdsList, currentConversationId, setCurrentConversation } = useContext(WebSocketContext);
+    const { messages, sendMessage, openConversationId, conversationIdsList, currentConversationId, setCurrentConversation, setUpNewConversation } = useContext(WebSocketContext);
     const [isInputDisabled, setIsInputDisabled] = useState(false);
     const [input, setInput] = useState<string>('');
     const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -23,9 +23,9 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
     }, [messages]);
 
     if (userIsAdmin) useEffect(() => {
-        setIsInputDisabled(!openConversationIdsList.includes(currentConversationId));
+        setIsInputDisabled(openConversationId !== currentConversationId);
         setInput("");
-    }, [openConversationIdsList, currentConversationId]);
+    }, [openConversationId, currentConversationId]);
 
     const handleSend = () => {
         if (input.trim() !== "" && !isInputDisabled) {
@@ -40,11 +40,6 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
             setInput("");
         };
     };
-
-    //print debug conversationIdsList
-    useEffect(() => {
-        console.debug('conversationIdsList:', conversationIdsList);
-    }, [conversationIdsList]);
 
     return (
         <div className="w-full h-full rounded-[15px] flex flex-col items-center bg-white shadow-[0px_3.5px_5.5px_0px_rgba(0,_0,_0,_0.02)]">
@@ -86,13 +81,21 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                 }
                 {
                     !userIsAdmin &&
-                    <Select
-                        value={currentConversationId}
-                        placeholder="Select a conversation:"
-                        options={conversationIdsList.map((entry: any) => ({ label: typeof entry === 'string' ? entry : entry.id, value: typeof entry === 'string' ? entry : entry.id }))}
-                        onChange={setCurrentConversation}
-                        onChangeHandleValueChange={true}
-                    />
+                    <div className="w-full flex gap-2 px-[20px] pb-[10px]">
+                        <Select
+                            value={currentConversationId}
+                            placeholder="Select a conversation:"
+                            options={conversationIdsList.map((entry: any) => ({ label: typeof entry === 'string' ? entry : entry.id, value: typeof entry === 'string' ? entry : entry.id }))}
+                            onChange={setCurrentConversation}
+                            onChangeHandleValueChange={true}
+                        />
+                        <button 
+                            onClick={setUpNewConversation}
+                            className="px-4 py-2 bg-gradient-to-tl from-secondary to-primary text-background rounded-md hover:opacity-90 transition-opacity"
+                        >
+                            New Chat
+                        </button>
+                    </div>
                 }
         </div>
     );

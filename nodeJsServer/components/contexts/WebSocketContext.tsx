@@ -88,10 +88,11 @@ type WebSocketContextType = {
     currentChart: ChatbotChart | null;
     setChartFromHistory: (chartIndex: ChatbotChart) => void;
     setImageForChart: (chart: ChatbotChart, image: string) => void;
-    openConversationIdsList: string[];
+    openConversationId: string;
     conversationIdsList: ConversationEntry[];
     currentConversationId: string;
     setCurrentConversation: (conversationId: string) => void;
+    setUpNewConversation: () => void;
     commands: ICommand[];
     sendCommand: (command: string) => void;
 };
@@ -106,10 +107,11 @@ const WebSocketContext = createContext<WebSocketContextType>({
     currentChart: null,
     setChartFromHistory: () => { },
     setImageForChart: () => { },
-    openConversationIdsList: [],
+    openConversationId: "",
     conversationIdsList: [],
     currentConversationId: "",
     setCurrentConversation: () => { },
+    setUpNewConversation: () => { },
     commands: [],
     sendCommand: () => { }
 });
@@ -127,7 +129,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const [chatMessages, setChatMessages] = useState<IMessage[]>([]);
     const [charts, setCharts] = useState<ChatbotChart[]>([]);
     const [currentChart, setCurrentChart] = useState<ChatbotChart | null>(null);
-    const [openConversationIdsList, setOpenConversationIdsList] = useState<string[]>([]);
+    const [openConversationId, setOpenConversationId] = useState<string>("");
     const [conversationIdsList, setConversationIdsList] = useState<ConversationEntry[]>([]);
     const [currentConversationId, setCurrentConversationId] = useState<string>("");
     const lastChartDatasRef = useRef<{ data: null | ChatbotChartData[], args: null | ChatbotChartArgs }>({ data: null, args: null });
@@ -159,6 +161,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
             //Handle incomming message
             console.log("Handling message");
             console.log(message);
+            
             if (message.message) {
                 if (!Array.isArray(message.message) && message.message.str === "Hello from server" && socketState.current === "waiting" && "isAdmin" in message) {
                     socketState.current = "connected";
@@ -276,6 +279,15 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         sendWebSocketMessageToServer({ action: 'sendMessageToUser', message });
     };
 
+    // Function to create a new conversation
+    function setUpNewConversation() {
+        setChatMessages([]);
+        setCurrentChart(null);
+        setCharts([]);
+        lastChartDatasRef.current = { data: null, args: null };
+        sendWebSocketMessageToServer({ action: 'setUpNewConversation' });
+    }
+
     //Decompress the filecontent encapsulated by the server
     async function retrieveFileContent(fileContent: string) {
         const base64ToUint8Array = (base64: string) => Uint8Array.from(atob(base64), c => c.charCodeAt(0));
@@ -322,11 +334,10 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         });
     }
 
-    function updateClientList({ connectedList, userLoggedList }: { connectedList: string[], userLoggedList: any[] }) {
-        setCurrentConversation("");
+    function updateClientList({ connectedId, userLoggedList }: { connectedId: string, userLoggedList: any[] }) {
+        setCurrentConversation(connectedId);
         setConversationIdsList(normalizeToConversationEntryArray(userLoggedList));
-        setOpenConversationIdsList(connectedList || []);
-
+        setOpenConversationId(connectedId || "");
     };
 
         // Debug: log the actual states when they change to verify updates
@@ -335,8 +346,8 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     }, [conversationIdsList]);
 
     useEffect(() => {
-        console.log('openConversationIdsList state updated:', openConversationIdsList);
-    }, [openConversationIdsList]);
+        console.log('openConversationId state updated:', openConversationId);
+    }, [openConversationId]);
 
     const sendMessage = (message: string) => {
         if (isAdmin.current) {
@@ -381,7 +392,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         try {
             console.log('Selected client:', conversationId);
             setCurrentConversationId(conversationId);
-            !isAdmin.current ? setOpenConversationIdsList([conversationId]) : null;
+            setOpenConversationId(conversationId);
             setChatMessages([]);
             setCurrentChart(null);
             setCharts([]);
@@ -437,7 +448,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <WebSocketContext.Provider value={{ messages: chatMessages, sendMessage, charts, currentChart, setChartFromHistory, setImageForChart, openConversationIdsList, conversationIdsList, currentConversationId, setCurrentConversation, commands, sendCommand }}>
+        <WebSocketContext.Provider value={{ messages: chatMessages, sendMessage, charts, currentChart, setChartFromHistory, setImageForChart, openConversationId, conversationIdsList, currentConversationId, setCurrentConversation, setUpNewConversation, commands, sendCommand }}>
             {children}
         </WebSocketContext.Provider>
     );
