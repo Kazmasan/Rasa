@@ -85,7 +85,12 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                         <Select
                             value={currentConversationId}
                             placeholder="Select a conversation:"
-                            options={conversationIdsList.map((entry: any) => ({ label: typeof entry === 'string' ? entry : entry.id, value: typeof entry === 'string' ? entry : entry.id }))}
+                            options={conversationIdsList.map((entry: any) => ({ 
+                                label: typeof entry === 'string' ? entry : entry.id, 
+                                value: typeof entry === 'string' ? entry : entry.id,
+                                creationDate: entry.creationDate,
+                                lastModifiedDate: entry.lastModifiedDate
+                            }))}
                             onChange={setCurrentConversation}
                             onChangeHandleValueChange={true}
                         />
