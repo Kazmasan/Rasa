@@ -1,0 +1,68 @@
+Number;TAB;INDICATOR;ABBREVIATION;COLUMN;ATTRIBUTE_TYPE;SUMMARIZE_BY;NEW_DASHBOARD_VIS;PERCENTAGE
+1;PC;Age;QI0;age;Quantitative;median;number;0
+2;PC;Gender;;gender;Categorical;%;stacked_bargraph;0
+3;PC;NIHSS;QI;nihss_score;Quantitative;median;trend;0
+4;PC;BP systolic;;sys_blood_pressure;Quantitative;mean;trend;0
+5;PC;BP diastolic;;dis_blood_pressure;Quantitative;mean;trend;0
+6;PC;Glucose;QI;glucose;Quantitative;mean;trend;0
+7;PC;LDL cholestorol;QI;cholesterol;Quantitative;mean;trend;0
+8;PC;mRS 2-5;QI;prestroke_mrs;Quantitative;%;trend;0
+9;PC;COVID positive;;covid_test;Categorical_binary;%;trend;1
+10;PC;In-hospital stroke;;hospital_stroke;Categorical_binary;%;trend;1
+11;PC;Arrival pre-notified;QI5;prenotification;Categorical_binary;%;trend;1
+12;PC;Hypertension;QI;risk_hypertension;Categorical_binary;%;trend;1
+13;PC;Diabetes;QI;risk_diabetes;Categorical_binary;%;trend;1
+14;PC;Hyperlipidemia;;risk_hyperlipidemia;Categorical_binary;%;trend;1
+15;PC;Active smoker;;risk_smoker;Categorical_binary;%;trend;1
+16;PC;Previous IS/TIA;QI;risk_previous_ischemic_stroke;Categorical_binary;%;trend;1
+17;PC;Previous ICH;QI;risk_previous_hemorrhagic_stroke;Categorical_binary;%;trend;1
+19;PC;Cor. Artery Disease / Previous MI;;risk_coronary_artery_disease_or_myocardial_infarction;Categorical_binary;%;trend;1
+20;PC;Cong. Heart Fail;;risk_congestive_heart_failure;Categorical_binary;%;trend;1
+21;PC;HIV;;risk_hiv;Categorical_binary;%;trend;1
+22;PC;Type of stroke;;stroke_type;Categorical;%;stacked_bargraph;0
+25;PC;Hospitalized at unit;;hospitalized_in;Categorical;%;stacked_bargraph;1
+26;PC;Hospitalized at department;;department_type;Categorical;%;stacked_bargraph;1
+27;PC;Anti Diabetics;;before_onset_antidiabetics;Categorical_binary;%;trend;1
+30;PC;Cilostazol;;before_onset_cilostazol;Categorical_binary;%;trend;1
+31;PC;Clopidogrel;;before_onset_clopidrogel;Categorical_binary;%;trend;1
+32;PC;Ticagrelol;;before_onset_ticagrelor;Categorical_binary;%;trend;1
+33;PC;Ticlopidine;;before_onset_ticlopidine;Categorical_binary;%;trend;1
+34;PC;Prasugrel;;before_onset_prasugrel;Categorical_binary;%;trend;1
+35;PC;Dipyridamol, slow release;;before_onset_dipyridamol;Categorical_binary;%;trend;1
+36;PC;Warfarin;;before_onset_warfarin;Categorical_binary;%;trend;1
+44;PC;Stroke mimics;;stroke_mimics_diagnosis;Categorical;%;stacked_bargraph;0
+45;Bleeding;ICH volume;QI1;bleeding_volume_value;Categorical_binary;%;trend;0
+47;Bleeding;Source of bleeding found;;bleeding_source;Categorical_binary;%;trend;1
+49;Bleeding;ICH score;;ich_score;Categorical;%;stacked_bargraph;0
+54;Bleeding;Hunt-Hess;;hunt_hess_score;Categorical;%;stacked_bargraph;0
+55;Imaging;Imaging modality;;imaging_type;Categorical;%;stacked_bargraph;0
+57;Imaging;Imaging not done at all;QI3;imaging_done;Categorical_binary;%;trend;1
+59;Imaging;Door-to-imaging time;QI5;door_to_imaging;Quantitative;median;trend;0
+60;Imaging;CT perfusion score;QI6;perfusion_core;Quantitative;mean;trend;0
+61;Imaging;CT perfusion hypoperfusion;QI7;hypoperfusion_core;Quantitative;mean;trend;0
+66;Treatment;Number of IVT;QI1;thrombolysis;Categorical_binary;count;trend;0
+69;Treatment;Onset-to-door time for IVT, median;QI4;onset_to_door;Quantitative;median;trend;0
+70;Treatment;Door-to-needle for IVT, median;QI5;door_to_needle;Quantitative;median;trend;0
+74;Treatment;Door-to-groin for MT;QI9;door_to_groin;Quantitative;median;trend;0
+77;Treatment;TICI scores;;tici_score;Categorical;%;stacked_bargraph;0
+92;PO;Physiotherapy initiated <= 72 hours after admission;QI8;physiotherapy_start_within_3days;Categorical_binary;%;trend;1
+93;PO;Patient examined by occupational therapist;QI9;occup_physiotherapy_received;Categorical_binary;%;trend;1
+95;PO;Reasons for not providing IVT;;no_thrombolysis_reason;Categorical;%;stacked_bargraph;0
+97;PO;Test for dysphagia screen;;dysphagia_screening_type;Categorical;%;stacked_bargraph;0
+98;Discharge;Anti Diabetics;;discharge_antidiabetics;Categorical_binary;%;trend;1
+101;Discharge;Cilostazol;;discharge_cilostazol;Categorical_binary;%;trend;1
+102;Discharge;Clopidogrel;;discharge_clopidrogel;Categorical_binary;%;trend;1
+103;Discharge;Ticagrelol;;discharge_ticagrelor;Categorical_binary;%;trend;1
+104;Discharge;Ticlopidine;;discharge_ticlopidine;Categorical_binary;%;trend;1
+105;Discharge;Prasugrel;;discharge_prasugrel;Categorical_binary;%;trend;1
+106;Discharge;Dipyridamol, slow release;;discharge_dipyridamol;Categorical_binary;%;trend;1
+107;Discharge;Warfarin for AF;;discharge_warfarin;Categorical_binary;%;trend;1
+108;Discharge;Low molecular weight heparin/heparin for AF;;discharge_heparin;Categorical_binary;%;trend;1
+109;Discharge;Dabigatran for AF;;discharge_dabigatran;Categorical_binary;%;trend;1
+110;Discharge;Rivoroxaban for AF;;discharge_rivaroxaban;Categorical_binary;%;trend;1
+111;Discharge;Apixaban for AF;;discharge_apixaban;Categorical_binary;%;trend;1
+112;Discharge;Edoxaban for AF;;discharge_edoxaban;Categorical_binary;%;trend;1
+116;Discharge;Modified ranking scale discharge;Q19;discharge_mrs;Categorical;%;stacked_bargraph;0
+117;Discharge;Modified ranking scale 3 month;Q20;three_m_mrs;Categorical;%;stacked_bargraph;0
+118;Discharge;NIHSS discharge;Q21;discharge_nihss_score;Quantitative;median;trend;0
+;;;;;;;;1
