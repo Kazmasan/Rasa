@@ -28,6 +28,14 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
         currentConversationId,
         setCurrentConversation,
         setUpNewConversation,
+        userFolders,
+        setUserFolders,
+        currentFolder,
+        setCurrentFolder,
+        setUpNewFolder,
+        moveConversationToFolder,
+        deleteConversation,
+        deleteFolder
     } = useContext(WebSocketContext);
 
     // --- Local state management ---
@@ -55,7 +63,7 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
                         threshold: 0.4,
                         ignoreLocation: true,
                         findAllMatches: true,
-                        });
+                    });
                 }
             })
             .catch((err) => console.error("Failed to fetch columns:", err));
@@ -102,36 +110,36 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
      * - Uses Fuse.js for fuzzy matching.
      */
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setInput(value);
-    setSelectedSuggestionIndex(-1); // Reset selection on new typing
+        const value = e.target.value;
+        setInput(value);
+        setSelectedSuggestionIndex(-1); // Reset selection on new typing
 
-    if (!fuseRef.current) return;
+        if (!fuseRef.current) return;
 
-    const words = value.trimEnd().split(/\s+/);
-    const lastWord = words[words.length - 1] || "";
+        const words = value.trimEnd().split(/\s+/);
+        const lastWord = words[words.length - 1] || "";
 
-    // Reset suggestions when user types a space or has <3 chars
-    if (value.endsWith(" ") || lastWord.length < 3) {
-        setSuggestions([]);
-        return;
-    }
+        // Reset suggestions when user types a space or has <3 chars
+        if (value.endsWith(" ") || lastWord.length < 3) {
+            setSuggestions([]);
+            return;
+        }
 
-    // Perform fuzzy match
-    const results = fuseRef.current
-        .search(lastWord)
-        .map((r) => r.item)
-        .slice(0, 5);
-
-    // Fallback to substring match if Fuse returns nothing
-    const matches =
-        results.length > 0
-        ? results
-        : columns
-            .filter((c) => c.toLowerCase().includes(lastWord.toLowerCase()))
+        // Perform fuzzy match
+        const results = fuseRef.current
+            .search(lastWord)
+            .map((r) => r.item)
             .slice(0, 5);
 
-    setSuggestions(matches);
+        // Fallback to substring match if Fuse returns nothing
+        const matches =
+            results.length > 0
+                ? results
+                : columns
+                    .filter((c) => c.toLowerCase().includes(lastWord.toLowerCase()))
+                    .slice(0, 5);
+
+        setSuggestions(matches);
     };
 
     /**
@@ -141,55 +149,96 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
      * - Sending messages normally when no suggestion is selected
      */
     const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (suggestions.length > 0) {
-        switch (event.key) {
-        case "ArrowDown":
-            event.preventDefault();
-            setSelectedSuggestionIndex((prev) =>
-            prev < suggestions.length - 1 ? prev + 1 : 0
-            );
-            return;
+        if (suggestions.length > 0) {
+            switch (event.key) {
+                case "ArrowDown":
+                    event.preventDefault();
+                    setSelectedSuggestionIndex((prev) =>
+                        prev < suggestions.length - 1 ? prev + 1 : 0
+                    );
+                    return;
 
-        case "ArrowUp":
-            event.preventDefault();
-            setSelectedSuggestionIndex((prev) =>
-            prev > 0 ? prev - 1 : suggestions.length - 1
-            );
-            return;
+                case "ArrowUp":
+                    event.preventDefault();
+                    setSelectedSuggestionIndex((prev) =>
+                        prev > 0 ? prev - 1 : suggestions.length - 1
+                    );
+                    return;
 
-        case "Tab":
-        case "Enter":
-            if (selectedSuggestionIndex >= 0) {
-            event.preventDefault();
-            handleSuggestionSelect(suggestions[selectedSuggestionIndex]);
-            return;
+                case "Tab":
+                case "Enter":
+                    if (selectedSuggestionIndex >= 0) {
+                        event.preventDefault();
+                        handleSuggestionSelect(suggestions[selectedSuggestionIndex]);
+                        return;
+                    }
+                    break;
+
+                default:
+                    break;
             }
-            break;
-
-        default:
-            break;
         }
-    }
 
-    // If no suggestion is active, Enter sends the message
-    if (event.key === "Enter" && !isInputDisabled) {
-        sendMessage(input);
-        setInput("");
-        setSuggestions([]);
-    }
+        // If no suggestion is active, Enter sends the message
+        if (event.key === "Enter" && !isInputDisabled) {
+            sendMessage(input);
+            setInput("");
+            setSuggestions([]);
+        }
     };
 
     /**
      * Replaces the last word in the input with the chosen suggestion.
      */
     const handleSuggestionSelect = (suggestion: string) => {
-    setInput((prev) => {
-        const words = prev.trim().split(/\s+/);
-        words[words.length - 1] = suggestion;
-        return words.join(" ") + " ";
-    });
-    setSuggestions([]);
-    setSelectedSuggestionIndex(-1);
+        setInput((prev) => {
+            const words = prev.trim().split(/\s+/);
+            words[words.length - 1] = suggestion;
+            return words.join(" ") + " ";
+        });
+        setSuggestions([]);
+        setSelectedSuggestionIndex(-1);
+    };
+    console.log(conversationIdsList);
+    // --- Folder state ---
+    const [folders, setFolders] = useState<string[]>([]);
+    const [folderAssignments, setFolderAssignments] = useState<Record<string, string | null>>({});
+    const [activeFolder, setActiveFolder] = useState<string | null>(null);
+
+    // Called when selecting a conversation
+    const handleConversationChange = (convId: string) => {
+        setCurrentConversation(convId);
+    };
+
+    // When the user clicks a folder in the dropdown
+    const handleFolderChange = (folder: string | null) => {
+        setCurrentFolder(folder);
+    };
+
+    // Create a new folder
+    const handleCreateFolder = (folderName: string) => {
+        setUpNewFolder(folderName);
+        setActiveFolder(folderName);
+    };
+
+    // Handle moving a conversation to a folder (drag & drop)
+    const handleMoveConversation = (conversationId: string, folderName: string | null) => {
+        moveConversationToFolder(folderName, conversationId);
+    };
+
+        /**
+     * Deletes a folder (front-end placeholder).
+     */
+    const handleDeleteFolder = (folderName: string) => {
+        deleteFolder(folderName);
+        
+    };
+
+    /**
+     * Deletes a conversation (front-end placeholder).
+     */
+    const handleDeleteConversation = (conversationId: string) => {
+        deleteConversation(conversationId);
     };
 
 
@@ -221,95 +270,93 @@ export function Chatbot({ userIsAdmin }: { userIsAdmin?: boolean } = { userIsAdm
 
             {/* ---------- INPUT + AUTOCOMPLETE ---------- */}
             <div className="w-full flex items-end justify-center px-[20px] py-[10px] relative">
-            <textarea
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Enter your message..."
-                className={cn(
-                "appearance-none outline-none ring-0 bg-transparent placeholder:text-gray-dark w-full min-h-[50px] max-h-[200px] resize-none overflow-y-auto border-t border-gray-light text-text leading-[1.4] px-2 py-2",
-                userIsAdmin && isInputDisabled && "cursor-not-allowed"
-                )}
-                disabled={userIsAdmin && isInputDisabled}
-                rows={1}
-                ref={(el) => {
-                if (el) {
-                    // Dynamic height adjustment
-                    el.style.height = "auto";
-                    el.style.height = `${el.scrollHeight}px`;
-                }
-                }}
-                onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = `${Math.min(target.scrollHeight, 200)}px`; // max 200px height
-                }}
-            />
-
-            {/* Dynamic fuzzy suggestions */}
-            {suggestions.length > 0 && (
-                <div className="absolute bottom-[70px] left-[20px] right-[20px] bg-white border border-gray-200 rounded-md shadow-md z-50 max-h-[200px] overflow-y-auto">
-                {suggestions.map((s, i) => (
-                    <div
-                    key={i}
+                <textarea
+                    value={input}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Enter your message..."
                     className={cn(
-                        "p-2 text-sm cursor-pointer",
-                        i === selectedSuggestionIndex ? "bg-gray-200" : "hover:bg-gray-100"
+                        "appearance-none outline-none ring-0 bg-transparent placeholder:text-gray-dark w-full min-h-[50px] max-h-[200px] resize-none overflow-y-auto border-t border-gray-light text-text leading-[1.4] px-2 py-2",
+                        userIsAdmin && isInputDisabled && "cursor-not-allowed"
                     )}
-                    onMouseDown={() => handleSuggestionSelect(s)}
-                    >
-                    {s}
-                    </div>
-                ))}
-                </div>
-            )}
+                    disabled={userIsAdmin && isInputDisabled}
+                    rows={1}
+                    ref={(el) => {
+                        if (el) {
+                            // Dynamic height adjustment
+                            el.style.height = "auto";
+                            el.style.height = `${el.scrollHeight}px`;
+                        }
+                    }}
+                    onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = "auto";
+                        target.style.height = `${Math.min(target.scrollHeight, 200)}px`; // max 200px height
+                    }}
+                />
 
-            {/* Send button */}
-            <div
-                onClick={handleSend}
-                className={cn(
-                "absolute right-[-20px] bottom-[10px] w-[40px] h-[40px] rounded-full flex items-center justify-center bg-gradient-to-tl from-secondary to-primary shadow-[0px_0px_10px_0px_rgba(0,_0,_0,_0.25)] cursor-pointer",
-                userIsAdmin && isInputDisabled && "cursor-not-allowed"
+                {/* Dynamic fuzzy suggestions */}
+                {suggestions.length > 0 && (
+                    <div className="absolute bottom-[70px] left-[20px] right-[20px] bg-white border border-gray-200 rounded-md shadow-md z-50 max-h-[200px] overflow-y-auto">
+                        {suggestions.map((s, i) => (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "p-2 text-sm cursor-pointer",
+                                    i === selectedSuggestionIndex ? "bg-gray-200" : "hover:bg-gray-100"
+                                )}
+                                onMouseDown={() => handleSuggestionSelect(s)}
+                            >
+                                {s}
+                            </div>
+                        ))}
+                    </div>
                 )}
-            >
-                <SendIcon width={20} height={20} className="fill-background" />
-            </div>
+
+                {/* Send button */}
+                <div
+                    onClick={handleSend}
+                    className={cn(
+                        "absolute right-[-20px] bottom-[10px] w-[40px] h-[40px] rounded-full flex items-center justify-center bg-gradient-to-tl from-secondary to-primary shadow-[0px_0px_10px_0px_rgba(0,_0,_0,_0.25)] cursor-pointer",
+                        userIsAdmin && isInputDisabled && "cursor-not-allowed"
+                    )}
+                >
+                    <SendIcon width={20} height={20} className="fill-background" />
+                </div>
             </div>
 
             {/* ---------- CONVERSATION CONTROLS ---------- */}
-            {userIsAdmin ? (
+            <div className="w-full flex gap-2 px-[20px] pb-[10px]">
                 <Select
                     value={currentConversationId}
                     placeholder="Select a conversation:"
-                    options={conversationIdsList.map((entry: any) => ({
-                        label: typeof entry === "string" ? entry : entry.id,
-                        value: typeof entry === "string" ? entry : entry.id,
-                    }))}
-                    onChange={setCurrentConversation}
+                    options={conversationIdsList.map((entry: any) => {
+                        const id = typeof entry === "string" ? entry : entry.id ?? entry.conversationId ?? String(entry);
+                        const creationDate = typeof entry === "string" ? undefined : entry.creationDate;
+                        const lastModifiedDate = typeof entry === "string" ? undefined : entry.lastModifiedDate;
+                        const folderFromEntry = typeof entry === "string" ? null : (entry.folder ?? null);
+                        const folder = folderFromEntry ?? (folderAssignments[id] ?? null);
+
+                        return { label: id, value: id, creationDate, lastModifiedDate, folder };
+                    })}
+                    onChange={handleConversationChange}
+                    folders={userFolders}
+                    currentFolder={currentFolder}
+                    onFolderChange={handleFolderChange}
+                    onCreateFolder={handleCreateFolder}
                     onChangeHandleValueChange={true}
+                    onMoveConversation={handleMoveConversation}
+                    onDeleteFolder={handleDeleteFolder}
+                    onDeleteConversation={handleDeleteConversation}
                 />
-            ) : (
-                <div className="w-full flex gap-2 px-[20px] pb-[10px]">
-                    <Select
-                        value={currentConversationId}
-                        placeholder="Select a conversation:"
-                        options={conversationIdsList.map((entry: any) => ({
-                            label: typeof entry === "string" ? entry : entry.id,
-                            value: typeof entry === "string" ? entry : entry.id,
-                            creationDate: entry.creationDate,
-                            lastModifiedDate: entry.lastModifiedDate,
-                        }))}
-                        onChange={setCurrentConversation}
-                        onChangeHandleValueChange={true}
-                    />
-                    <button
-                        onClick={setUpNewConversation}
-                        className="px-4 py-2 bg-gradient-to-tl from-secondary to-primary text-background rounded-md hover:opacity-90 transition-opacity"
-                    >
-                        New Chat
-                    </button>
-                </div>
-            )}
+
+                <button
+                    onClick={setUpNewConversation}
+                    className="px-4 py-2 bg-gradient-to-tl from-secondary to-primary text-background rounded-md hover:opacity-90 transition-opacity"
+                >
+                    New Chat
+                </button>
+            </div>
         </div>
     );
 }

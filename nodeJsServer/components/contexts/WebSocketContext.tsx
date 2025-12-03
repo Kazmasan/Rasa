@@ -3,6 +3,7 @@
 import { createContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { getErrorMessage } from "@/lib/get-error-message";
 import { ChartTypeRegistry } from 'chart.js';
+import { send } from 'process';
 
 /**
  * Represents a message exchanged in the chat.
@@ -79,6 +80,7 @@ interface ConversationEntry {
     id: string;
     creationDate?: string;
     lastModifiedDate?: string;
+    folder?: string | null;
 }
 
 type WebSocketContextType = {
@@ -95,7 +97,16 @@ type WebSocketContextType = {
     setUpNewConversation: () => void;
     commands: ICommand[];
     sendCommand: (command: string) => void;
+    userFolders: string[];
+    setUserFolders: React.Dispatch<React.SetStateAction<string[]>>;
+    currentFolder: string | null;
+    setCurrentFolder: React.Dispatch<React.SetStateAction<string | null>>;
+    setUpNewFolder: (folder: string) => void;
+    moveConversationToFolder: (folder: string | null, conversationId: string) => void;
+    deleteConversation: (conversationId: string) => void;
+    deleteFolder: (folderName: string) => void;
 };
+
 
 /**
  * Create a WebSocket context for managing WebSocket communications and application state.
@@ -113,7 +124,15 @@ const WebSocketContext = createContext<WebSocketContextType>({
     setCurrentConversation: () => { },
     setUpNewConversation: () => { },
     commands: [],
-    sendCommand: () => { }
+    sendCommand: () => { },
+    userFolders: [],
+    setUserFolders: () => { },
+    currentFolder: "",
+    setCurrentFolder: () => { },
+    setUpNewFolder: () => { },
+    moveConversationToFolder: () => { },
+    deleteConversation: () => { },
+    deleteFolder: () => { },
 });
 
 /**
@@ -135,11 +154,14 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const lastChartDatasRef = useRef<{ data: null | ChatbotChartData[], args: null | ChatbotChartArgs }>({ data: null, args: null });
     const maxCharts = 5;
     const [commands, setCommands] = useState<ICommand[]>([]);
+    const [userFolders, setUserFolders] = useState<string[]>([]);
+    const [currentFolder, setCurrentFolder] = useState<string | null>(null);
 
     // Function to send a WebSocket message to the server
     function sendWebSocketMessageToServer(message: CustomWebSocket.Client.ToServerMessage | Record<string, any>) {
         try {
             if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+                console.log("Sending message:", message);
                 socket.current.send(JSON.stringify(message));
             } else {
                 console.log(socket.current, socket.current?.readyState)
@@ -161,7 +183,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
             //Handle incomming message
             console.log("Handling message");
             console.log(message);
-            
+
             if (message.message) {
                 if (!Array.isArray(message.message) && message.message.str === "Hello from server" && socketState.current === "waiting" && "isAdmin" in message) {
                     socketState.current = "connected";
@@ -279,13 +301,41 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
         sendWebSocketMessageToServer({ action: 'sendMessageToUser', message });
     };
 
+    function setUpNewFolder(folderName: string) {
+        sendWebSocketMessageToServer({ action: 'setUpNewFolder', folderName });
+        setUserFolders((prev) => [...prev, folderName]);
+    }
+
     // Function to create a new conversation
     function setUpNewConversation() {
         setChatMessages([]);
         setCurrentChart(null);
         setCharts([]);
         lastChartDatasRef.current = { data: null, args: null };
-        sendWebSocketMessageToServer({ action: 'setUpNewConversation' });
+        sendWebSocketMessageToServer({ action: 'setUpNewConversation', folder: currentFolder });
+    }
+
+    function moveConversationToFolder(folder: string | null, conversationId: string) {
+        console.log('folder :' + folder);
+        console.log("conversation ID" + conversationId);
+        sendWebSocketMessageToServer({ action: 'addToFolder', folderName: folder, conversationId: conversationId });
+        setConversationIdsList(prev =>
+            prev.map(c =>
+                c.id === conversationId
+                    ? { ...c, folder }
+                    : c
+            )
+        );
+    }
+
+    function deleteConversation(conversationId: string) {
+        sendWebSocketMessageToServer({ action: 'deleteConversation', conversationId });
+        setConversationIdsList(prev => prev.filter(c => c.id !== conversationId));
+    }
+
+    function deleteFolder(folderName: string) {
+        sendWebSocketMessageToServer({ action: 'deleteFolder', folderName });
+        setUserFolders(prev => prev.filter(f => f !== folderName));
     }
 
     //Decompress the filecontent encapsulated by the server
@@ -328,19 +378,20 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     function normalizeToConversationEntryArray(list: any[]): ConversationEntry[] {
         const nowIso = new Date().toISOString();
         return (list || []).map(item => {
-            if (typeof item === 'string') return { id: item, creationDate: nowIso, lastModifiedDate: nowIso };
-            if (item && typeof item === 'object') return { id: item.id ?? item.conversationId ?? String(item), creationDate: item.creationDate ?? item.createdAt, lastModifiedDate: item.lastModifiedDate ?? item.updatedAt };
-            return { id: String(item), creationDate: nowIso, lastModifiedDate: nowIso };
+            if (typeof item === 'string') return { id: item, creationDate: nowIso, lastModifiedDate: nowIso, folder: null };
+            if (item && typeof item === 'object') return { id: item.id ?? item.conversationId ?? String(item), creationDate: item.creationDate ?? item.createdAt, lastModifiedDate: item.lastModifiedDate ?? item.updatedAt, folder: item.folder ?? null };
+            return { id: String(item), creationDate: nowIso, lastModifiedDate: nowIso, folder: null };
         });
     }
 
-    function updateClientList({ connectedId, userLoggedList }: { connectedId: string, userLoggedList: any[] }) {
+    function updateClientList({ connectedId, userLoggedList, userFolders }: { connectedId: string, userLoggedList: any[], userFolders: string[] }) {
         setCurrentConversation(connectedId);
         setConversationIdsList(normalizeToConversationEntryArray(userLoggedList));
+        setUserFolders(userFolders);
         setOpenConversationId(connectedId || "");
     };
 
-        // Debug: log the actual states when they change to verify updates
+    // Debug: log the actual states when they change to verify updates
     useEffect(() => {
         console.log('conversationIdsList state updated:', conversationIdsList);
     }, [conversationIdsList]);
@@ -448,7 +499,7 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     return (
-        <WebSocketContext.Provider value={{ messages: chatMessages, sendMessage, charts, currentChart, setChartFromHistory, setImageForChart, openConversationId, conversationIdsList, currentConversationId, setCurrentConversation, setUpNewConversation, commands, sendCommand }}>
+        <WebSocketContext.Provider value={{ messages: chatMessages, sendMessage, charts, currentChart, setChartFromHistory, setImageForChart, openConversationId, conversationIdsList, currentConversationId, setCurrentConversation, setUpNewConversation, commands, sendCommand, userFolders, setUserFolders, currentFolder, setCurrentFolder, setUpNewFolder, moveConversationToFolder, deleteConversation, deleteFolder }}>
             {children}
         </WebSocketContext.Provider>
     );

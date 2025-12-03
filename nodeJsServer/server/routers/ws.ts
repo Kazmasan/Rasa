@@ -7,6 +7,7 @@ import { getErrorMessage } from "../../lib/get-error-message";
 import cookieParser from "cookie-parser";
 import { Session, ISession } from "../../lib/db/models/session";
 import crypto from "crypto";
+import session from "express-session";
 
 // Track connected clients and admins
 let clients: Map<string, CustomWebSocket.User> = new Map();
@@ -180,7 +181,7 @@ export default (server: Server) => {
                     const newConversationId = `${crypto.randomUUID()}`;
                     
                     // Set up logging for the new conversation
-                    rasaClient.setupLogging(session.userId, newConversationId);
+                    rasaClient.setupLogging(session.userId, newConversationId, parsedMessage.folder);
                     
                     // Get updated user logs
                     const userLoggedList = await rasaClient.getUserLog(session.userId);
@@ -188,11 +189,12 @@ export default (server: Server) => {
                     // Add new conversation to clients map
                     clients.set(newConversationId, ws);
                     console.log(`New client connected with user_id: ${newConversationId}`);
-                    
+
                     sendWebSocketMessageToClient(ws, {
                         clients: {
                             connectedId: newConversationId,
-                            userLoggedList: userLoggedList
+                            userLoggedList: userLoggedList,
+                            userFolders: userFolders
                         }
                     });
 
@@ -231,8 +233,53 @@ export default (server: Server) => {
                     });
                 };
             }
-
-
+            else if (parsedMessage.action === 'setUpNewFolder') {
+                try {
+                    // Create a new folder for the user
+                    console.log(`Creating new folder "${parsedMessage.folderName}" for user ${session.userId}`);
+                    rasaClient.createFolder(session.userId, parsedMessage.folderName);
+                    sendWebSocketMessageToClient(ws, {
+                        promptMsg: {
+                            str: `Folder "${parsedMessage.folderName}" created successfully.`,
+                            error: false,
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error creating new folder:', getErrorMessage(error));
+                    sendWebSocketMessageToClient(ws, {
+                        promptMsg: {
+                            str: `Failed to create folder "${parsedMessage.folderName}".`,
+                            error: true,
+                        }
+                    });
+                }
+            }
+            else if (parsedMessage.action === 'addToFolder') {
+                try {
+                    // Add the conversation to the specified folder
+                    console.log(`Adding conversation ${conversationId} to folder "${parsedMessage.folderName}" for user ${session.userId}`);
+                    rasaClient.addConversationToFolder(session.userId, parsedMessage.conversationId, parsedMessage.folderName);
+                }
+                catch (error) {
+                console.error('Error adding conversation to folder:', getErrorMessage(error));
+                }
+            }else if (parsedMessage.action === 'deleteConversation') {
+                try {
+                    // Delete the specified conversation
+                    console.log(`Deleting conversation ${parsedMessage.conversationId} for user ${session.userId}`);
+                    rasaClient.deleteConversation(session.userId, parsedMessage.conversationId);
+                } catch (error) {
+                    console.error('Error deleting conversation:', getErrorMessage(error));
+                }
+            } else if (parsedMessage.action === 'deleteFolder') {
+                try {
+                    // Delete the specified folder
+                    console.log(`Deleting folder "${parsedMessage.folderName}" for user ${session.userId}`);
+                    rasaClient.deleteFolder(session.userId, parsedMessage.folderName);
+                } catch (error) {
+                    console.error('Error deleting folder:', getErrorMessage(error));
+                }
+            }
             // Handle case for admin commands
             if (parsedMessage.action === 'admin') {
                 console.log(`Received command from admin: ${parsedMessage.command}`);
@@ -251,6 +298,7 @@ export default (server: Server) => {
                             error: false,
                         }
                     });
+
                 } else {
                     try {
                         // Parse the admin command and execute the corresponding action
@@ -333,7 +381,8 @@ export default (server: Server) => {
                 const clientListMessage = {
                     clients: {
                         connectedId: conversationId,
-                        userLoggedList: userLoggedList
+                        userLoggedList: userLoggedList,
+                        userFolders: userFolders
                     }
                 };
                 admins.forEach(admin => {
@@ -355,6 +404,9 @@ export default (server: Server) => {
         //Get latest logId on the list
         const latestLogId = userLog.length > 0 ? userLog[userLog.length - 1].id : `${crypto.randomUUID()}`;
 
+        //Get all folders
+        const userFolders = await rasaClient.getUserFolders(session.userId);
+
         // Create the logging file
         //ws.logFileHandle = rasaClient.setupLogging(session.userId, conversationId);
         if (userLog.length === 0) {
@@ -372,7 +424,8 @@ export default (server: Server) => {
             const userClientMessage = {
                 clients: {
                     connectedId: latestLogId,
-                    userLoggedList: userLog
+                    userLoggedList: userLog,
+                    userFolders: userFolders
                 }
             };
             if (ws.readyState === WebSocket.OPEN) sendWebSocketMessageToClient(ws, userClientMessage);

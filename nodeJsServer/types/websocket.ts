@@ -37,7 +37,21 @@ declare global {
                 command: string;
             } | {
                 action: "setUpNewConversation";
-            }
+                folder: string | null;
+            } | {
+                action: "setUpNewFolder";
+                folderName: string;
+            } | {
+                action: "addToFolder";
+                folderName: string;
+                conversationId: string;
+            } | {
+                action: "deleteConversation";
+                conversationId: string;
+            } | {
+                action: "deleteFolder";
+                folderName: string;
+            };
         }
 
         namespace Server {
@@ -67,7 +81,7 @@ declare global {
                     args?: string;
                 };
                 clients?: {
-                    connectedId: string; userLoggedList: string[];
+                    connectedId: string; userLoggedList: string[]; userFolders: string[];
                 };
                 promptMsg?: {
                     str: string;
